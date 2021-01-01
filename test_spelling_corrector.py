@@ -43,7 +43,7 @@ class SpellingCorrectorTest(TestCase):
         """Tests the symmetric delete corrector"""
         current_working_directory = os.path.abspath(os.getcwd())
         tests_directory = os.path.join(current_working_directory, "tests")
-        logging.info("Tests the symetric delete corrector")
+        logging.info("Tests the symmetric delete corrector")
         logging.info("Tests directory is %s" % tests_directory)
         for test_directory_name in os.listdir(tests_directory):
             logging.info("Testing in %s directory" % test_directory_name)
