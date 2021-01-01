@@ -34,6 +34,10 @@ class AbstractSpellingCorrector(ABC):
             return 0
         return frequency_value_of_word
 
+    def _known_in(self, words):
+        """Returns the subset of words that appear in the vocabulary"""
+        return set(word for word in words if self._word_2_frequency.get(word))
+
     def correct(self, utterance):
         """Tokenizes the utterance and corrects each token"""
         tokens = self._tokenizer(utterance.lower())
@@ -55,10 +59,6 @@ class NorvigCorrector(AbstractSpellingCorrector):
         return (
             self._known_in(token_as_list) or self._known_in(token_1_edits) or self._known_in(token_2_edits) or
             token_as_list)
-
-    def _known_in(self, words):
-        """Returns the subset of words that appear in the vocabulary"""
-        return set(word for word in words if self._word_2_frequency.get(word))
 
     @staticmethod
     def _one_edit_token_distances(token):
@@ -97,23 +97,24 @@ class SymmetricDeleteCorrector(AbstractSpellingCorrector):
 
     def _candidates(self, token):
         """Returns candidate words from the dictionaries by looking at the edit distances"""
+        token_as_list = [token]
         token_1_edits = SymmetricDeleteCorrector._one_edit_deleted_variations(token)
-        token_2_edits = SymmetricDeleteCorrector._one_edit_deleted_variations(token)
+        token_2_edits = SymmetricDeleteCorrector._two_edits_deleted_variations(token)
         return (
+            self._known_in(token_as_list) or
             self._deleted_variation_2_dictionary_words[token] or
-            (
-                set().union(
-                    chain(
-                        self._deleted_variation_2_dictionary_words[token_1_edit] for token_1_edit in token_1_edits))) or
-            (
-                set().union(
-                    chain(self._deleted_variation_2_dictionary_words[token_2_edit] for token_2_edit in token_2_edits))))
+            set(
+                chain.from_iterable(
+                    self._deleted_variation_2_dictionary_words[token_1_edit] for token_1_edit in token_1_edits)) or
+            set(
+                chain.from_iterable(
+                    self._deleted_variation_2_dictionary_words[token_2_edit] for token_2_edit in token_2_edits)))
 
     def _create_deleted_variation_2_dictionary_words(self):
         """Creates the deleted variation to dictionary words"""
         deleted_variation_2_dictionary_words = defaultdict(set)
         for word in self._word_2_frequency.keys():
-            deleted_variations = chain(self._one_edit_deleted_variations(word), self._two_edit_deleted_variations(word))
+            deleted_variations = chain(self._one_edit_deleted_variations(word), self._two_edits_deleted_variations(word))
             for deleted_variation in deleted_variations:
                 deleted_variation_2_dictionary_words[deleted_variation].add(word)
         return deleted_variation_2_dictionary_words
@@ -125,7 +126,7 @@ class SymmetricDeleteCorrector(AbstractSpellingCorrector):
         return (left_split + right_split[1:] for left_split, right_split in splitted_token_pairs if right_split)
 
     @staticmethod
-    def _two_edit_deleted_variations(token):
+    def _two_edits_deleted_variations(token):
         """Returns the two edit deleted variations of the token"""
         return (
             two_edits_distance_of_word for one_edit_distance_of_word in
